@@ -290,6 +290,46 @@ app.delete('/api/citas/:id', (req, res) => {
     });
 });
 
+// Ruta para obtener todas las especialidades
+app.get('/api/especialidades', (req, res) => {
+  const query = 'SELECT * FROM Especialidades'; // Obtén todas las especialidades
+
+  pool.request()
+    .query(query)
+    .then(result => {
+      res.json(result.recordset); // Devuelve las especialidades como JSON
+    })
+    .catch(err => {
+      console.error('Error al obtener las especialidades:', err);
+      res.status(500).json({ error: 'Hubo un error al obtener las especialidades' });
+    });
+});
+
+// Ruta para obtener los médicos según la especialidad
+app.get('/api/medicos', (req, res) => {
+  const especialidad_id = req.query.especialidad_id; // Obtiene el ID de la especialidad desde los parámetros de consulta
+
+  if (!especialidad_id) {
+    return res.status(400).json({ error: 'El ID de la especialidad es obligatorio' });
+  }
+
+  const query = `
+    SELECT m.id, m.nombre, m.apellido
+    FROM Medicos m
+    WHERE m.especialidad_id = @especialidad_id
+  `; // Consulta para obtener los médicos de la especialidad seleccionada
+
+  pool.request()
+    .input('especialidad_id', sql.Int, especialidad_id) // Vincula el parámetro especialidad_id
+    .query(query)
+    .then(result => {
+      res.json(result.recordset); // Devuelve los médicos como JSON
+    })
+    .catch(err => {
+      console.error('Error al obtener los médicos:', err);
+      res.status(500).json({ error: 'Hubo un error al obtener los médicos' });
+    });
+});
 
 
 // Iniciar el servidor
