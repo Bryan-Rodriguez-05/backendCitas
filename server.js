@@ -169,43 +169,46 @@ app.delete('/api/pacientes/:id', (req, res) => {
     });
 });
 
-// Ruta para agendar una cita
 app.post('/api/citas', (req, res) => {
-  const { paciente_id, fecha_cita, motivo } = req.body;
+  const { paciente_id, medico_id, fecha_cita, motivo } = req.body;
 
   // Verificar que los campos necesarios estén presentes
-  if (!paciente_id || !fecha_cita || !motivo) {
+  if (!paciente_id || !medico_id || !fecha_cita || !motivo) {
     return res.status(400).json({ error: 'Todos los campos son obligatorios' });
   }
 
   // Insertar la nueva cita en la base de datos
   const query = `
-  INSERT INTO citas (paciente_id, fecha_cita, motivo)
+  INSERT INTO citas (paciente_id, medico_id, fecha_cita, motivo)
   OUTPUT INSERTED.id
-  VALUES (@paciente_id, @fecha_cita, @motivo)
+  VALUES (@paciente_id, @medico_id, @fecha_cita, @motivo)
 `;
 
-pool.request()
-  .input('paciente_id', sql.Int, paciente_id)
-  .input('fecha_cita', sql.DateTime, fecha_cita)
-  .input('motivo', sql.VarChar, motivo)
-  .query(query)
-  .then(result => {
-    res.status(201).json({ message: 'Cita agendada exitosamente', citaId: result.recordset[0].id });
-  })
-  .catch(err => {
-    console.error('Error al agendar cita:', err);
-    res.status(500).json({ error: 'Hubo un error al agendar la cita' });
-  });
-
+  pool.request()
+    .input('paciente_id', sql.Int, paciente_id)
+    .input('medico_id', sql.Int, medico_id)  // Asegúrate de que el médico sea proporcionado
+    .input('fecha_cita', sql.DateTime, fecha_cita)
+    .input('motivo', sql.VarChar, motivo)
+    .query(query)
+    .then(result => {
+      res.status(201).json({ message: 'Cita agendada exitosamente', citaId: result.recordset[0].id });
+    })
+    .catch(err => {
+      console.error('Error al agendar cita:', err);
+      res.status(500).json({ error: 'Hubo un error al agendar la cita' });
+    });
 });
 
-// Ruta para obtener todas las citas
+
 app.get('/api/citas', (req, res) => {
   const paciente_id = req.query.paciente_id;
   let query = `
-    SELECT * FROM citas 
+    SELECT citas.id, citas.fecha_cita, citas.motivo, pacientes.nombre AS paciente_nombre, 
+           pacientes.apellido AS paciente_apellido, medicos.nombre AS medico_nombre, 
+           medicos.apellido AS medico_apellido 
+    FROM citas 
     INNER JOIN pacientes ON citas.paciente_id = pacientes.id
+    INNER JOIN medicos ON citas.medico_id = medicos.id
   `;
   
   if (paciente_id) {
@@ -232,23 +235,25 @@ app.get('/api/citas', (req, res) => {
   }
 });
 
+
 app.put('/api/citas/:id', (req, res) => {
   const { id } = req.params;
-  const { paciente_id, fecha_cita, motivo } = req.body;
+  const { paciente_id, medico_id, fecha_cita, motivo } = req.body;
 
-  if (!paciente_id || !fecha_cita || !motivo) {
+  if (!paciente_id || !medico_id || !fecha_cita || !motivo) {
     return res.status(400).json({ error: 'Todos los campos son obligatorios' });
   }
 
   const query = `
     UPDATE citas 
-    SET paciente_id = @paciente_id, fecha_cita = @fecha_cita, motivo = @motivo
+    SET paciente_id = @paciente_id, medico_id = @medico_id, fecha_cita = @fecha_cita, motivo = @motivo
     WHERE id = @id
   `;
 
   pool.request()
     .input('id', sql.Int, id)
     .input('paciente_id', sql.Int, paciente_id)
+    .input('medico_id', sql.Int, medico_id)
     .input('fecha_cita', sql.DateTime, fecha_cita)
     .input('motivo', sql.VarChar, motivo)
     .query(query)
@@ -263,6 +268,7 @@ app.put('/api/citas/:id', (req, res) => {
       res.status(500).json({ error: 'Hubo un error al actualizar la cita' });
     });
 });
+
 
 app.delete('/api/citas/:id', (req, res) => {
   const { id } = req.params;
@@ -283,6 +289,7 @@ app.delete('/api/citas/:id', (req, res) => {
       res.status(500).json({ error: 'Hubo un error al eliminar la cita' });
     });
 });
+
 
 
 // Iniciar el servidor
