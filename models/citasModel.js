@@ -43,27 +43,22 @@ exports.getCitas = async (paciente_id) => {
   return result.recordset;
 };
 
-exports.updateCita = async (id, paciente_id, medico_id, fecha_cita, motivo) => {
+exports.updateCitaSoloFechaMotivo = async (id, fecha_cita, motivo) => {
   const pool = await poolPromise;
   const query = `
-    UPDATE citas 
-    SET 
-      paciente_id = @paciente_id,
-      medico_id   = @medico_id,
-      fecha_cita  = @fecha_cita,
-      motivo      = @motivo
-    WHERE id = @id
+    UPDATE citas
+       SET fecha_cita = @fecha_cita,
+           motivo     = @motivo
+     WHERE id         = @id
   `;
-  await pool.request()
-    .input('id', sql.Int, id)
-    .input('paciente_id', sql.Int, paciente_id)
-    .input('medico_id', sql.Int, medico_id)
+  const result = await pool.request()
+    .input('id',         sql.Int,      id)
     .input('fecha_cita', sql.DateTime, fecha_cita)
-    .input('motivo', sql.VarChar, motivo)
+    .input('motivo',     sql.VarChar,  motivo)
     .query(query);
-
-    return result.rowsAffected[0];
+  return result.rowsAffected[0];
 };
+
 
 exports.deleteCita = async (id) => {
   const pool = await poolPromise;

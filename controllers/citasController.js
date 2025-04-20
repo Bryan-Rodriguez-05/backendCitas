@@ -34,30 +34,28 @@ exports.getCitas = async (req, res) => {
 };
 
 exports.updateCita = async (req, res) => {
-    const { id } = req.params;
-    const { paciente_id, medico_id, fecha_cita, motivo } = req.body;
-  
-    if (!paciente_id || !medico_id || !fecha_cita || !motivo) {
-      return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+  const { id } = req.params;
+  const { fecha_cita, motivo } = req.body;
+
+  if (!fecha_cita || !motivo) {
+    return res.status(400).json({ error: 'Fecha y motivo son obligatorios' });
+  }
+
+  try {
+    const rows = await citasModel.updateCitaSoloFechaMotivo(
+      parseInt(id,10),
+      fecha_cita,
+      motivo
+    );
+    if (rows === 0) {
+      return res.status(404).json({ error: 'Cita no encontrada' });
     }
-  
-    try {
-      const rows = await citasModel.updateCita(
-        parseInt(id, 10),
-        parseInt(paciente_id, 10),
-        parseInt(medico_id, 10),
-        fecha_cita,
-        motivo
-      );
-      if (rows === 0) {
-        return res.status(404).json({ error: 'Cita no encontrada' });
-      }
-      res.json({ message: 'Cita actualizada exitosamente' });
-    } catch (err) {
-      console.error('Error al actualizar cita:', err.stack);
-      res.status(500).json({ error: 'Hubo un error al actualizar la cita' });
-    }
-  };
+    res.json({ message: 'Cita actualizada exitosamente' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Hubo un error al actualizar la cita' });
+  }
+};
 
 exports.deleteCita = async (req, res) => {
   const { id } = req.params;
