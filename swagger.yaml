@@ -1,0 +1,217 @@
+openapi: 3.0.0
+info:
+  title: API de Citas Médicas
+  description: API para gestionar citas médicas, pacientes y médicos
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api
+paths:
+  /citas:
+    get:
+      summary: Obtener todas las citas
+      operationId: getCitas
+      parameters:
+        - name: paciente_id
+          in: query
+          required: false
+          description: El ID del paciente para filtrar las citas
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de citas obtenidas
+        '500':
+          description: Error en el servidor
+    post:
+      summary: Crear una nueva cita
+      operationId: createCita
+      requestBody:
+        description: Datos para crear una nueva cita
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paciente_id:
+                  type: integer
+                medico_id:
+                  type: integer
+                fecha_cita:
+                  type: string
+                  format: date-time
+                motivo:
+                  type: string
+      responses:
+        '201':
+          description: Cita creada exitosamente
+        '400':
+          description: Error de validación
+        '500':
+          description: Error en el servidor
+
+  /citas/{id}:
+    put:
+      summary: Actualizar una cita existente
+      operationId: updateCita
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de la cita a actualizar
+          schema:
+            type: integer
+      requestBody:
+        description: Datos para actualizar la cita
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fecha_cita:
+                  type: string
+                  format: date-time
+                motivo:
+                  type: string
+      responses:
+        '200':
+          description: Cita actualizada exitosamente
+        '400':
+          description: Error de validación
+        '404':
+          description: Cita no encontrada
+        '500':
+          description: Error en el servidor
+    delete:
+      summary: Eliminar una cita
+      operationId: deleteCita
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de la cita a eliminar
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cita eliminada exitosamente
+        '404':
+          description: Cita no encontrada
+        '500':
+          description: Error en el servidor
+  /pacientes:
+    get:
+      summary: Obtener todos los pacientes
+      operationId: getPacientes
+      responses:
+        '200':
+          description: Lista de pacientes obtenida correctamente
+        '500':
+          description: Error en el servidor
+    post:
+      summary: Crear un nuevo paciente
+      operationId: createPaciente
+      requestBody:
+        description: Datos para crear un nuevo paciente
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                apellido:
+                  type: string
+                dni:
+                  type: string
+                fecha_nacimiento:
+                  type: string
+                  format: date
+                direccion:
+                  type: string
+                telefono:
+                  type: string
+                correo:
+                  type: string
+      responses:
+        '201':
+          description: Paciente creado exitosamente
+        '400':
+          description: Error en los datos enviados
+        '500':
+          description: Error en el servidor
+
+  /pacientes/{id}:
+    put:
+      summary: Actualizar un paciente existente
+      operationId: updatePaciente
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del paciente a actualizar
+          schema:
+            type: integer
+      requestBody:
+        description: Datos para actualizar un paciente
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                apellido:
+                  type: string
+                dni:
+                  type: string
+                fecha_nacimiento:
+                  type: string
+                  format: date
+                direccion:
+                  type: string
+                telefono:
+                  type: string
+                correo:
+                  type: string
+      responses:
+        '200':
+          description: Paciente actualizado exitosamente
+        '400':
+          description: Error en los datos enviados
+        '404':
+          description: Paciente no encontrado
+        '500':
+          description: Error en el servidor
+    delete:
+      summary: Eliminar un paciente
+      operationId: deletePaciente
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del paciente a eliminar
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paciente eliminado exitosamente
+        '404':
+          description: Paciente no encontrado
+        '500':
+          description: Error en el servidor
+  /medicos:
+    get:
+      summary: Obtener médicos por especialidad
+      operationId: getMedicos
+      parameters:
+        - name: especialidad_id
+          in: query
+          required: true
+          description: ID de la especialidad para filtrar médicos
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista de médicos
+        '500':
+          description: Error en el servidor

@@ -1,4 +1,4 @@
-// controllers/authController.js
+const jwt = require('jsonwebtoken');
 const { sql, poolPromise } = require('../config/dbConfig');
 
 exports.login = async (req, res) => {
@@ -17,8 +17,19 @@ exports.login = async (req, res) => {
 
     console.log('→ Resultado consulta login:', result.recordset);
 
+    // Verificamos si el paciente existe
     if (result.recordset.length > 0) {
-      res.json({ success: true, patient: result.recordset[0] });
+      const patient = result.recordset[0];
+
+      // Aquí generamos el JWT con la información del paciente (puedes incluir más datos si lo deseas)
+      const token = jwt.sign(
+        { id: patient.id, nombre: patient.nombre, apellido: patient.apellido, correo: patient.correo },
+        'secreto', // Cambia 'secreto' por una clave secreta más segura
+        { expiresIn: '1h' } // El token expirará en 1 hora
+      );
+
+      // Devolvemos el token al cliente
+      res.json({ success: true, token: token, patient: patient });
     } else {
       res.status(400).json({ error: 'Credenciales incorrectas' });
     }
