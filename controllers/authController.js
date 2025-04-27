@@ -1,40 +1,36 @@
+// controllers/authController.js
 const jwt = require('jsonwebtoken');
 const { sql, poolPromise } = require('../config/dbConfig');
 
 exports.login = async (req, res) => {
   try {
-    // Esperamos a que el pool esté listo
     const pool = await poolPromise;
-
     const { email, dni } = req.body;
-    console.log('→ Login recibido:', req.body);
 
     const query = 'SELECT * FROM pacientes WHERE correo = @correo AND dni = @dni';
     const result = await pool.request()
       .input('correo', sql.VarChar, email)
-      .input('dni', sql.VarChar, dni)
+      .input('dni',   sql.VarChar, dni)
       .query(query);
 
-    console.log('→ Resultado consulta login:', result.recordset);
-
-    // Verificamos si el paciente existe
-    if (result.recordset.length > 0) {
-      const patient = result.recordset[0];
-
-      // Aquí generamos el JWT con la información del paciente (puedes incluir más datos si lo deseas)
-      const token = jwt.sign(
-        { id: patient.id, nombre: patient.nombre, apellido: patient.apellido, correo: patient.correo },
-        'secreto', // Cambia 'secreto' por una clave secreta más segura
-        { expiresIn: '1h' } // El token expirará en 1 hora
-      );
-
-      // Devolvemos el token al cliente
-      res.json({ success: true, token: token, patient: patient });
-    } else {
-      res.status(400).json({ error: 'Credenciales incorrectas' });
+    if (result.recordset.length === 0) {
+      return res.status(400).json({ success: false, error: 'Credenciales incorrectas' });
     }
+
+    const patient = result.recordset[0];
+
+    // Genera el token (usa una clave secreta _muy_ fuerte y no la expongas en el código)
+    const token = jwt.sign(
+      { id: patient.id, correo: patient.correo },
+      process.env.JWT_SECRET,      // ahora viene de .env
+      { expiresIn: '2h' }
+    );
+
+    // Devuelve paciente y token
+    res.json({ success: true, patient, token });
   } catch (err) {
-    console.error('Error al iniciar sesión:', err.stack);
-    res.status(500).json({ error: 'Hubo un error en el servidor' });
+    console.error('Error al iniciar sesión:', err);
+    res.status(500).json({ success: false, error: 'Hubo un error en el servidor' });
   }
+  
 };

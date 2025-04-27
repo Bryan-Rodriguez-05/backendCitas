@@ -1,23 +1,14 @@
+// middlewares/authMiddleware.js
 const jwt = require('jsonwebtoken');
 
-// Middleware para verificar si el usuario está autenticado
-const authMiddleware = (req, res, next) => {
-  // Obtén el token de los encabezados de la solicitud
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+module.exports = function authMiddleware(req, res, next) {
+  const authHeader = req.headers['authorization'];            // "Bearer TOKEN"
+  const token      = authHeader && authHeader.split(' ')[1]; // extrae el TOKEN
+  if (!token) return res.status(401).json({ error: 'Token no proporcionado' });
 
-  if (!token) {
-    return res.status(401).json({ error: 'Acceso no autorizado' }); // Si no hay token, no está autenticado
-  }
-
-  try {
-    // Verificamos si el token es válido
-    const decoded = jwt.verify(token, 'secreto'); // 'secreto' debe ser la misma clave usada para firmar el JWT
-    req.user = decoded; // Agregamos los datos del usuario decodificados a la solicitud
-    next(); // Llamamos al siguiente middleware o controlador
-  } catch (err) {
-    console.error(err);
-    res.status(401).json({ error: 'Token no válido o expirado' });
-  }
+  jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
+    if (err) return res.status(403).json({ error: 'Token inválido' });
+    req.user = payload;    // aquí tendremos { id, correo, iat, exp }
+    next();
+  });
 };
-
-module.exports = authMiddleware;

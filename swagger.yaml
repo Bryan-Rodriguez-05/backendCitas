@@ -5,6 +5,16 @@ info:
   version: 1.0.0
 servers:
   - url: http://localhost:5000/api
+components:
+  securitySchemes:
+    bearerAuth:                  # <- nombre libre, lo usaremos después
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+# Aplica el bearerAuth a TODAS las operaciones por defecto
+security:
+  - bearerAuth: []
 paths:
   /citas:
     get:
