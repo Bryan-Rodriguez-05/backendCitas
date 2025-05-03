@@ -7,14 +7,15 @@ servers:
   - url: http://localhost:5000/api
 components:
   securitySchemes:
-    bearerAuth:                  # <- nombre libre, lo usaremos después
+    bearerAuth:                  # Nombre del esquema
       type: http
       scheme: bearer
-      bearerFormat: JWT
+      bearerFormat: JWT           # Formato de autenticación
 
 # Aplica el bearerAuth a TODAS las operaciones por defecto
 security:
-  - bearerAuth: []
+  - bearerAuth: []               # Aplica la seguridad a todas las operaciones
+
 paths:
   /citas:
     get:
@@ -162,7 +163,7 @@ paths:
           schema:
             type: integer
       requestBody:
-        description: Datos para actualizar un paciente
+        description: Datos para actualizar el paciente
         content:
           application/json:
             schema:

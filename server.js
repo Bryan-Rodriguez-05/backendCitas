@@ -34,11 +34,8 @@ app.use('/api/citas', authMiddleware, citasRoutes);
 app.use('/api/especialidades', authMiddleware, especialidadesRoutes);
 app.use('/api/medicos', authMiddleware, medicosRoutes);
 
-//app.use('/api', authRoutes);
-//app.use('/api/citas',authenticateToken, citasRoutes);
-//app.use('/api/especialidades', especialidadesRoutes);
-//app.use('/api/pacientes',authenticateToken, pacientesRoutes);
-//app.use('/api/medicos', medicosRoutes);
+
+
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.listen(port, () => {
   console.log(`Servidor corriendo en http://localhost:${port}`);
