@@ -143,6 +143,8 @@ paths:
                   type: string
                 correo:
                   type: string
+                contrasenia:
+                  type: string  
       responses:
         '201':
           description: Paciente creado exitosamente
@@ -184,6 +186,8 @@ paths:
                   type: string
                 correo:
                   type: string
+                contrasenia:
+                  type: string  
       responses:
         '200':
           description: Paciente actualizado exitosamente

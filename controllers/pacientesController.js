@@ -13,9 +13,9 @@ exports.getPacientes = async (req, res) => {
 };
 
 exports.createPaciente = async (req, res) => {
-  const { nombre, apellido, dni, fecha_nacimiento, direccion, telefono, correo } = req.body;
+  const { nombre, apellido, dni, fecha_nacimiento, direccion, telefono, correo,contrasenia } = req.body;
 
-  if (!nombre || !apellido || !dni || !correo) {
+  if (!nombre || !apellido || !dni || !correo || !contrasenia) {
     return res.status(400).json({ error: 'Todos los campos son obligatorios' });
   }
 
@@ -27,7 +27,8 @@ exports.createPaciente = async (req, res) => {
       fecha_nacimiento,
       direccion,
       telefono,
-      correo
+      correo,
+      contrasenia
     );
     res.status(201).json({
       message: 'Paciente registrado exitosamente',
@@ -41,9 +42,9 @@ exports.createPaciente = async (req, res) => {
 
 exports.updatePaciente = async (req, res) => {
   const { id } = req.params;
-  const { nombre, apellido, dni, fecha_nacimiento, direccion, telefono, correo } = req.body;
+  const { nombre, apellido, dni, fecha_nacimiento, direccion, telefono, correo,contrasenia } = req.body;
 
-  if (!nombre || !apellido || !dni || !correo) {
+  if (!nombre || !apellido || !dni || !correo || !contrasenia) {
     return res.status(400).json({ error: 'Todos los campos son obligatorios' });
   }
 
@@ -56,7 +57,8 @@ exports.updatePaciente = async (req, res) => {
       fecha_nacimiento,
       direccion,
       telefono,
-      correo
+      correo,
+      contrasenia
     );
     res.status(200).json({ message: 'Paciente modificado exitosamente' });
   } catch (err) {

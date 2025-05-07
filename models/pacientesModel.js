@@ -15,15 +15,16 @@ exports.createPaciente = async (
   fecha_nacimiento,
   direccion,
   telefono,
-  correo
+  correo,
+  contrasenia
 ) => {
   const pool = await poolPromise;
   const query = `
     INSERT INTO pacientes
-      (nombre, apellido, dni, fecha_nacimiento, direccion, telefono, correo)
+      (nombre, apellido, dni, fecha_nacimiento, direccion, telefono, correo, contrasenia)
     OUTPUT INSERTED.id
     VALUES
-      (@nombre, @apellido, @dni, @fecha_nacimiento, @direccion, @telefono, @correo)
+      (@nombre, @apellido, @dni, @fecha_nacimiento, @direccion, @telefono, @correo, @contrasenia)
   `;
   const result = await pool.request()
     .input('nombre', sql.VarChar, nombre)
@@ -33,6 +34,7 @@ exports.createPaciente = async (
     .input('direccion', sql.VarChar, direccion)
     .input('telefono', sql.VarChar, telefono)
     .input('correo', sql.VarChar, correo)
+    .input('contrasenia', sql.VarChar, contrasenia)
     .query(query);
   return result.recordset[0];
 };
@@ -45,7 +47,8 @@ exports.updatePaciente = async (
   fecha_nacimiento,
   direccion,
   telefono,
-  correo
+  correo,
+  contrasenia
 ) => {
   const pool = await poolPromise;
   const query = `
@@ -58,6 +61,7 @@ exports.updatePaciente = async (
       direccion = @direccion,
       telefono = @telefono,
       correo = @correo
+      contrasenia = @contrasenia
     WHERE id = @id
   `;
   await pool.request()
@@ -69,6 +73,7 @@ exports.updatePaciente = async (
     .input('direccion', sql.VarChar, direccion)
     .input('telefono', sql.VarChar, telefono)
     .input('correo', sql.VarChar, correo)
+    .input('contrasenia', sql.VarChar, contrasenia)
     .query(query);
 };
 

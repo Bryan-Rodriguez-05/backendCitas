@@ -5,12 +5,12 @@ const { sql, poolPromise } = require('../config/dbConfig');
 exports.login = async (req, res) => {
   try {
     const pool = await poolPromise;
-    const { email, dni } = req.body;
+    const { email, contrasenia } = req.body;
 
-    const query = 'SELECT * FROM pacientes WHERE correo = @correo AND dni = @dni';
+    const query = 'SELECT * FROM pacientes WHERE correo = @correo AND contrasenia = @contrasenia';
     const result = await pool.request()
       .input('correo', sql.VarChar, email)
-      .input('dni',   sql.VarChar, dni)
+      .input('contrasenia',   sql.VarChar, contrasenia)
       .query(query);
 
     if (result.recordset.length === 0) {
