@@ -33,6 +33,7 @@ exports.getCitas = async (paciente_id) => {
       c.tipo,  
       p.nombre      AS paciente_nombre, 
       p.apellido    AS paciente_apellido, 
+      p.correo AS paciente_email, 
       m.nombre      AS medico_nombre, 
       m.apellido    AS medico_apellido,
       e.nombre      AS especialidad_nombre  -- Traemos el nombre de la especialidad desde la tabla medicos

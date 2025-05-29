@@ -1,52 +1,75 @@
 // controllers/citasController.js
 
 // 1) Importa la fábrica y la capa de persistencia
+// controllers/citasController.js
 const CitaFactory = require('../models/domain/citaFactory');
-const citasModel  = require('../models/citasModel');
+const citasModel = require('../models/citasModel');
+const EmailObserver = require('../models/observers/emailObserver');
+const pacientesModel = require('../models/pacientesModel');
+const Subject = require('../models//domain/subject'); // Cambia esta línea si estás usando observer.js
+
+const subject = new Subject();
+const emailObserver = new EmailObserver();
+subject.addObserver(emailObserver);
 
 exports.createCita = async (req, res) => {
   const { tipo, paciente_id, medico_id, especialidad_id, fecha_cita, motivo } = req.body;
 
-  // Validaciones básicas
   if (!tipo || !paciente_id || !medico_id || !especialidad_id || !fecha_cita || !motivo) {
     return res.status(400).json({ error: 'Todos los campos son obligatorios' });
   }
 
   try {
-    const formattedFecha = new Date(req.body.fecha_cita).toISOString(); // Convierte la fecha a formato ISO 8601
-    // 2) Primero persiste la cita en la base de datos
-    const inserted = await citasModel.createCita(tipo, paciente_id, medico_id, especialidad_id,formattedFecha, motivo);
+    const formattedFecha = new Date(req.body.fecha_cita).toISOString(); 
+    const inserted = await citasModel.createCita(tipo, paciente_id, medico_id, especialidad_id, formattedFecha, motivo);
 
-    // 3) Luego construye el objeto de dominio usando la fábrica
+    // Obtener el correo del paciente
+    const paciente = await pacientesModel.getPacienteById(paciente_id);
+    
+    if (!paciente || !paciente.correo) {
+      return res.status(400).json({ error: 'Correo del paciente no encontrado' });
+    }
+
+    const correoPaciente = paciente.correo;
+
+    console.log('Correo del paciente:', correoPaciente);  // Verifica el correo
+
+    // Construye el objeto de dominio usando la fábrica y asigna el correo
     const citaDominio = CitaFactory.create(tipo, {
-      id:             inserted.id,
-      pacienteId:     inserted.paciente_id,
-      medicoId:       inserted.medico_id,
+      id: inserted.id,
+      pacienteId: inserted.paciente_id,
+      medicoId: inserted.medico_id,
       especialidadId: inserted.especialidad_id,
-      fechaCita:      inserted.fecha_cita,
-      motivo:         inserted.motivo
+      fechaCita: inserted.fecha_cita,
+      motivo: inserted.motivo,
+      paciente_email: correoPaciente  // Asigna el correo del paciente
     });
 
-    // 4) Devuelve la respuesta con detalles de dominio
+    // Notificar a los observadores
+    citaDominio.notifyObservers(citaDominio); 
+
     res.status(201).json({
       message: 'Cita agendada exitosamente',
       cita: {
-        id:          citaDominio.id,
-        pacienteId:  citaDominio.pacienteId,
-        medicoId:    citaDominio.medicoId,
+        id: citaDominio.id,
+        pacienteId: citaDominio.pacienteId,
+        medicoId: citaDominio.medicoId,
         especialidadId: citaDominio.especialidadId,
-        fechaCita:   citaDominio.fechaCita,
-        motivo:      citaDominio.motivo,
-        urgencia:    citaDominio.urgency,
-        detalles:    citaDominio.getDetails(),
-        tipo:        citaDominio.urgency === 'Alta' ? 'Urgente' : 'General'  // Agregar tipo
+        fechaCita: citaDominio.fechaCita,
+        motivo: citaDominio.motivo,
+        urgencia: citaDominio.urgency,
+        detalles: citaDominio.getDetails(),
+        tipo: citaDominio.urgency === 'Alta' ? 'Urgente' : 'General'
       }
     });
+    
   } catch (err) {
     console.error('Error al agendar cita:', err);
     res.status(500).json({ error: 'Hubo un error al agendar la cita' });
   }
 };
+
+
 
 exports.getCitas = async (req, res) => {
   const paciente_id = req.query.paciente_id;
@@ -66,7 +89,7 @@ exports.updateCita = async (req, res) => {
     return res.status(400).json({ error: 'Fecha y motivo son obligatorios' });
   }
   try {
-    const rows = await citasModel.updateCitaSoloFechaMotivo(parseInt(id,10), fecha_cita, motivo);
+    const rows = await citasModel.updateCitaSoloFechaMotivo(parseInt(id, 10), fecha_cita, motivo);
     if (rows === 0) {
       return res.status(404).json({ error: 'Cita no encontrada' });
     }

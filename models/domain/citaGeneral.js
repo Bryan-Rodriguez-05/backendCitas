@@ -1,14 +1,13 @@
-// models/domain/citaGeneral.js
-const Cita = require('./cita');
+const Cita = require('./cita'); // Asegúrate de que Cita extiende de Subject
 
 class CitaGeneral extends Cita {
-  constructor(props) {
-    super(props);
+  constructor(id, pacienteId, medicoId, fechaCita, motivo) {
+    super(id, pacienteId, medicoId, fechaCita, motivo);
     this.urgency = 'Normal';
   }
 
   getDetails() {
-    return `Consulta General → ${super.getDetails()} (Urgencia: ${this.urgency})`;
+    return `Consulta General: ${super.getDetails()} - Urgencia: ${this.urgency}`;
   }
 }
 

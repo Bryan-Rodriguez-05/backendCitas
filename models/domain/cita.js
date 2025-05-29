@@ -1,20 +1,25 @@
-// models/domain/cita.js
-class Cita {
-  constructor({ id, pacienteId, medicoId, especialidadId, fechaCita, motivo }) {
-    this.id             = id;
-    this.pacienteId     = pacienteId;
-    this.medicoId       = medicoId;
-    this.especialidadId = especialidadId;
-    this.fechaCita      = fechaCita;
-    this.motivo         = motivo;
+
+const Subject = require('./subject'); // Asegúrate de importar correctamente la clase Subject
+
+class Cita extends Subject {
+  constructor(id, pacienteId, medicoId, fechaCita, motivo, paciente_email) {
+    super(); // Llamada al constructor de Subject
+    this.id = id;
+    this.pacienteId = pacienteId;
+    this.medicoId = medicoId;
+    this.fechaCita = fechaCita;
+    this.motivo = motivo;
+    this.paciente_email = paciente_email; // Asigna correctamente la propiedad paciente_email
   }
 
-  // Descripción genérica; las subclases la enriquecerán
+  setEmail(correo) {
+    this.paciente_email = correo; // Asigna el correo del paciente
+  }
+
   getDetails() {
-    return `Cita [ID ${this.id}]: Paciente ${this.pacienteId}, Médico ${this.medicoId}, Especialidad ${this.especialidadId}, Fecha ${this.fechaCita}, Motivo "${this.motivo}"`;
+    return `Cita para el paciente con ID: ${this.pacienteId}, médico: ${this.medicoId}, fecha: ${this.fechaCita}, motivo: ${this.motivo}`;
   }
 }
 
 module.exports = Cita;
 
-  

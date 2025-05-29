@@ -84,3 +84,13 @@ exports.deletePaciente = async (id) => {
     .input('id', sql.Int, id)
     .query(query);
 };
+exports.getPacienteById = async (id) => {
+  const pool = await poolPromise;
+  const query = `SELECT correo FROM pacientes WHERE id = @id`;
+  const result = await pool.request()
+    .input('id', sql.Int, id)
+    .query(query);
+  return result.recordset[0];  // Devuelve el primer registro encontrado (paciente)
+};
+
+
