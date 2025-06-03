@@ -1,17 +1,16 @@
+// routes/pacientesRoutes.js
 const express = require('express');
 const router = express.Router();
 const pacientesController = require('../controllers/pacientesController');
+const roleMiddleware = require('../middlewares/roleMiddleware');
 
-// Obtener todos los pacientes
-router.get('/', pacientesController.getPacientes);
+// Registro público (no necesita JWT)
+router.post('/registro', pacientesController.createPaciente);
 
-// Crear un nuevo paciente
-router.post('/', pacientesController.createPaciente);
-
-// Modificar un paciente existente
-router.put('/:id', pacientesController.updatePaciente);
-
-// Eliminar un paciente
-router.delete('/:id', pacientesController.deletePaciente);
+// Resto de rutas: SOLO ADMIN
+router.get('/', roleMiddleware('ADMIN'), pacientesController.getPacientes);
+router.get('/:id', roleMiddleware('ADMIN'), pacientesController.getPaciente);
+router.put('/:id', roleMiddleware('ADMIN'), pacientesController.updatePaciente);
+router.delete('/:id', roleMiddleware('ADMIN'), pacientesController.deletePaciente);
 
 module.exports = router;

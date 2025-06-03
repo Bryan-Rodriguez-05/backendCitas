@@ -4,33 +4,86 @@ const { sql, poolPromise } = require('../config/dbConfig');
 
 exports.login = async (req, res) => {
   try {
-    const pool = await poolPromise;
     const { email, contrasenia } = req.body;
-
-    const query = 'SELECT * FROM pacientes WHERE correo = @correo AND contrasenia = @contrasenia';
-    const result = await pool.request()
-      .input('correo', sql.VarChar, email)
-      .input('contrasenia',   sql.VarChar, contrasenia)
-      .query(query);
-
-    if (result.recordset.length === 0) {
-      return res.status(400).json({ success: false, error: 'Credenciales incorrectas' });
+    if (!email || !contrasenia) {
+      return res.status(400).json({ success: false, error: 'Email y contraseña requeridos.' });
     }
 
-    const patient = result.recordset[0];
+    // 1) Buscar en tabla 'usuarios' por correo
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('correo', sql.VarChar, email)
+      .query(`
+        SELECT id, correo, contrasenia_hash, rol
+        FROM usuarios
+        WHERE correo = @correo
+      `);
 
-    // Genera el token (usa una clave secreta _muy_ fuerte y no la expongas en el código)
-    const token = jwt.sign(
-      { id: patient.id, correo: patient.correo },
-      process.env.JWT_SECRET,      // ahora viene de .env
-      { expiresIn: '2h' }
-    );
+    const usuario = result.recordset[0];
+    if (!usuario) {
+      // No existe ese correo
+      return res.status(401).json({ success: false, error: 'Credenciales incorrectas.' });
+    }
 
-    // Devuelve paciente y token
-    res.json({ success: true, patient, token });
+    // 2) Comparar la contraseña en texto plano
+    // Ahora contrasenia_hash en la base es la contraseña sin encriptar
+    if (contrasenia !== usuario.contrasenia_hash) {
+      return res.status(401).json({ success: false, error: 'Credenciales incorrectas.' });
+    }
+
+    // 3) Firmar el JWT con payload { id, rol, correo }
+    const payload = {
+      id: usuario.id,
+      rol: usuario.rol,
+      correo: usuario.correo
+    };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' });
+
+    // 4) Construir objeto 'profile' con datos básicos según rol
+    let profile = { id: usuario.id, correo: usuario.correo, rol: usuario.rol };
+
+    if (usuario.rol === 'PACIENTE') {
+      const perfilRes = await pool.request()
+        .input('usuario_id', sql.Int, usuario.id)
+        .query(`
+          SELECT nombre, apellido
+          FROM pacientes
+          WHERE usuario_id = @usuario_id
+        `);
+      if (perfilRes.recordset.length > 0) {
+        profile.nombre = perfilRes.recordset[0].nombre;
+        profile.apellido = perfilRes.recordset[0].apellido;
+      }
+    } else if (usuario.rol === 'MEDICO') {
+      const perfilRes = await pool.request()
+        .input('usuario_id', sql.Int, usuario.id)
+        .query(`
+          SELECT nombre, apellido, especialidad_id
+          FROM medicos
+          WHERE usuario_id = @usuario_id
+        `);
+      if (perfilRes.recordset.length > 0) {
+        profile.nombre = perfilRes.recordset[0].nombre;
+        profile.apellido = perfilRes.recordset[0].apellido;
+        profile.especialidad_id = perfilRes.recordset[0].especialidad_id;
+      }
+    } else if (usuario.rol === 'ADMIN') {
+      const perfilRes = await pool.request()
+        .input('usuario_id', sql.Int, usuario.id)
+        .query(`
+          SELECT nombre, apellido
+          FROM administradores
+          WHERE usuario_id = @usuario_id
+        `);
+      if (perfilRes.recordset.length > 0) {
+        profile.nombre = perfilRes.recordset[0].nombre;
+        profile.apellido = perfilRes.recordset[0].apellido;
+      }
+    }
+
+    return res.json({ success: true, token, profile });
   } catch (err) {
-    console.error('Error al iniciar sesión:', err);
-    res.status(500).json({ success: false, error: 'Hubo un error en el servidor' });
+    console.error('Error en login:', err);
+    return res.status(500).json({ success: false, error: 'Error interno en el servidor.' });
   }
-  
 };
