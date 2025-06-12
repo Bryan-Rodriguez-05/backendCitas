@@ -1,7 +1,7 @@
 // models/medicosModel.js
 const { sql, poolPromise } = require('../config/dbConfig');
 const usuariosModel = require('./usuariosModel');
-
+const redisClient = require('../config/redisClient');
 module.exports = {
   /**
    * Crea un médico completo (sólo ADMIN puede invocar).
@@ -45,6 +45,9 @@ module.exports = {
           (@usuario_id, @nombre, @apellido, @telefono, @especialidad_id)
       `);
 
+    // Invalidate cache
+    await redisClient.del('medicos:all');
+
     return usuarioId;
   },
 
@@ -53,6 +56,12 @@ module.exports = {
    * incluyendo su correo y el nombre de la especialidad.
    */
   getMedicos: async () => {
+    const cacheKey = 'medicos:all';
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const pool = await poolPromise;
     const result = await pool.request()
       .query(`
@@ -70,13 +79,24 @@ module.exports = {
         WHERE u.rol = 'MEDICO'
         ORDER BY m.apellido, m.nombre
       `);
-    return result.recordset;
+    const medicos = result.recordset;
+        
+    await redisClient.setEx(cacheKey, 300, JSON.stringify(medicos));
+    console.log('Guardando en cache:', cacheKey, '- cantidad:', medicos.length);
+
+    return medicos;
   },
 
   /**
    * Devuelve un objeto médico por usuario_id (o undefined si no existe).
    */
   getMedicoPorUsuarioId: async (usuario_id) => {
+    const cacheKey = `medico:${usuario_id}`;
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const pool = await poolPromise;
     const result = await pool.request()
       .input('usuario_id', sql.Int, usuario_id)
@@ -94,7 +114,12 @@ module.exports = {
         INNER JOIN especialidades e ON m.especialidad_id = e.id
         WHERE u.id = @usuario_id AND u.rol = 'MEDICO'
       `);
-    return result.recordset[0];
+    const medico = result.recordset[0] || null;
+
+    if (medico) {
+      await redisClient.setEx(cacheKey, 300, JSON.stringify(medico));
+    }
+    return medico;
   },
 
   /**
@@ -119,6 +144,9 @@ module.exports = {
           especialidad_id = @especialidad_id
         WHERE usuario_id = @usuario_id
       `);
+      // Invalidate cache
+    await redisClient.del('medicos:all');
+    await redisClient.del(`medico:${usuario_id}`);
   },
 
   /**
@@ -133,6 +161,9 @@ module.exports = {
         DELETE FROM usuarios
         WHERE id = @usuario_id
       `);
+      // Invalidate cache
+    await redisClient.del('medicos:all');
+    await redisClient.del(`medico:${usuario_id}`);
   },
 
   /**

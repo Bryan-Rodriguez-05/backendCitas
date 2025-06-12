@@ -1,7 +1,7 @@
 // models/pacientesModel.js
 const { sql, poolPromise } = require('../config/dbConfig');
 const usuariosModel = require('./usuariosModel');
-
+const redisClient = require('../config/redisClient');
 module.exports = {
   /**
    * Crea un paciente completo:
@@ -53,6 +53,8 @@ module.exports = {
         VALUES
           (@usuario_id, @nombre, @apellido, @fecha_nacimiento, @direccion, @telefono, @dni)
       `);
+    // Invalidate cache
+    await redisClient.del('pacientes:all');
 
     return usuarioId;
   },
@@ -62,6 +64,12 @@ module.exports = {
    * Cada fila incluye usuario_id, correo, nombre, apellido, ...
    */
   getPacientes: async () => {
+     const cacheKey = 'pacientes:all';
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const pool = await poolPromise;
     const result = await pool.request()
       .query(`
@@ -79,13 +87,22 @@ module.exports = {
         WHERE u.rol = 'PACIENTE'
         ORDER BY p.apellido, p.nombre
       `);
-    return result.recordset;
+    const pacientes = result.recordset;
+
+    await redisClient.setEx(cacheKey, 300, JSON.stringify(pacientes));
+    return pacientes;
   },
 
   /**
    * Devuelve objeto paciente por usuario_id, o undefined si no existe.
    */
   getPacientePorUsuarioId: async (usuario_id) => {
+    const cacheKey = `paciente:${usuario_id}`;
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const pool = await poolPromise;
     const result = await pool.request()
       .input('usuario_id', sql.Int, usuario_id)
@@ -103,7 +120,12 @@ module.exports = {
         INNER JOIN pacientes p ON u.id = p.usuario_id
         WHERE u.id = @usuario_id AND u.rol = 'PACIENTE'
       `);
-    return result.recordset[0];
+    const paciente = result.recordset[0] || null;
+
+    if (paciente) {
+      await redisClient.setEx(cacheKey, 300, JSON.stringify(paciente));
+    }
+    return paciente;
   },
 
   /**
@@ -139,6 +161,9 @@ module.exports = {
           dni             = @dni
         WHERE usuario_id = @usuario_id
       `);
+      // Invalidate cache
+    await redisClient.del('pacientes:all');
+    await redisClient.del(`paciente:${usuario_id}`);
   },
 
   /**
@@ -154,5 +179,8 @@ module.exports = {
         DELETE FROM usuarios
         WHERE id = @usuario_id
       `);
+      // Invalidate cache
+    await redisClient.del('pacientes:all');
+    await redisClient.del(`paciente:${usuario_id}`);
   }
 };

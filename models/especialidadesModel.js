@@ -1,15 +1,24 @@
 // models/especialidadesModel.js
 const { sql, poolPromise } = require('../config/dbConfig');
-
+const redisClient = require('../config/redisClient');
 module.exports = {
   /**
    * Devuelve todas las especialidades (para pacientes, médicos y administradores).
    */
   getEspecialidades: async () => {
+    const cacheKey = 'especialidades:all';
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const pool = await poolPromise;
     const result = await pool.request()
       .query(`SELECT id, nombre FROM especialidades ORDER BY nombre`);
-    return result.recordset;
+    const especialidades = result.recordset;
+
+    await redisClient.setEx(cacheKey, 300, JSON.stringify(especialidades));
+    return especialidades;
   },
 
   /**
@@ -24,7 +33,11 @@ module.exports = {
         VALUES (@nombre);
         SELECT SCOPE_IDENTITY() AS id;
       `);
-    return result.recordset[0].id;
+     const newId = result.recordset[0].id;
+
+    // Invalidate cache
+    await redisClient.del('especialidades:all');
+    return newId;
   },
 
   /**
@@ -40,6 +53,8 @@ module.exports = {
         SET nombre = @nombre
         WHERE id = @id
       `);
+      // Invalidate cache
+    await redisClient.del('especialidades:all');
   },
 
   /**
@@ -53,5 +68,7 @@ module.exports = {
         DELETE FROM especialidades
         WHERE id = @id
       `);
+      // Invalidate cache
+    await redisClient.del('especialidades:all');
   }
 };

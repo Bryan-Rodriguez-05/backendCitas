@@ -1,6 +1,6 @@
 // models/citasModel.js
 const { sql, poolPromise } = require('../config/dbConfig');
-
+const redisClient = require('../config/redisClient');
 module.exports = {
   /**
    * Crea una nueva cita. Devuelve el id de la cita insertada.
@@ -25,6 +25,13 @@ module.exports = {
    * Devuelve todas las citas de un paciente dado (rol 'PACIENTE').
    */
   getCitasPorPaciente: async (paciente_usuario_id) => {
+    const cacheKey = `citas:paciente:${paciente_usuario_id}`;
+    // 1. Intentar obtener del caché
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const pool = await poolPromise;
     const result = await pool.request()
       .input('paciente_usuario_id', sql.Int, paciente_usuario_id)
@@ -43,13 +50,24 @@ module.exports = {
         WHERE c.paciente_usuario_id = @paciente_usuario_id
         ORDER BY c.fecha_cita DESC
       `);
-    return result.recordset;
+    const citas = result.recordset;
+
+    // 3. Guardar en caché por 5 minutos (300 s)
+    await redisClient.setEx(cacheKey, 300, JSON.stringify(citas));
+
+    return citas;
   },
 
   /**
    * Devuelve una cita por su id.
    */
   getCitaPorId: async (id) => {
+    const cacheKey = `cita:${id}`;
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const pool = await poolPromise;
     const result = await pool.request()
       .input('id', sql.Int, id)
@@ -58,7 +76,12 @@ module.exports = {
         FROM citas
         WHERE id = @id
       `);
-    return result.recordset[0];
+    const cita = result.recordset[0] || null;
+
+    if (cita) {
+      await redisClient.setEx(cacheKey, 300, JSON.stringify(cita));
+    }
+    return cita;
   },
 
   /**
@@ -79,7 +102,14 @@ module.exports = {
             tipo       = @tipo
         WHERE id = @id
       `);
-    return result.rowsAffected[0];
+    const rows = result.rowsAffected[0];
+
+    if (rows > 0) {
+      // Invalidate cache for this cita and general lists
+      await redisClient.del(`cita:${id}`);
+      await redisClient.del('citas:all');
+    }
+    return rows;
   },
 
   /**
@@ -93,12 +123,22 @@ module.exports = {
         DELETE FROM citas
         WHERE id = @id
       `);
+
+    // Invalidate cache
+    await redisClient.del(`cita:${id}`);
+    await redisClient.del('citas:all');
   },
 
   /**
    * (Opcional) Devuelve todas las citas (rol 'ADMIN').
    */
   getAllCitas: async () => {
+    const cacheKey = 'citas:all';
+    const cached = await redisClient.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+
     const pool = await poolPromise;
     const result = await pool.request()
       .query(`
@@ -118,6 +158,9 @@ module.exports = {
         INNER JOIN especialidades e ON m.especialidad_id = e.id
         ORDER BY c.fecha_cita DESC
       `);
-    return result.recordset;
+    const citas = result.recordset;
+
+    await redisClient.setEx(cacheKey, 300, JSON.stringify(citas));
+    return citas;
   }
 };

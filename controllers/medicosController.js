@@ -1,6 +1,6 @@
 // controllers/medicosController.js
 const { sql, poolPromise } = require('../config/dbConfig');
-
+const medicosModel = require('../models/medicosModel');
 // POST /api/medicos/registro   (solo ADMIN)
 exports.createMedico = async (req, res) => {
   try {
@@ -64,26 +64,11 @@ exports.createMedico = async (req, res) => {
 };
 
 // GET /api/medicos   (roles: PACIENTE, MEDICO, ADMIN)
-exports.getMedicos = async (req, res) => {
+exports.getMedicos = async (req, res, next) => {
   try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .query(`
-        SELECT
-          u.id               AS usuario_id,
-          u.correo,
-          m.nombre,
-          m.apellido,
-          m.telefono,
-          m.especialidad_id,
-          e.nombre           AS especialidad
-        FROM usuarios u
-        INNER JOIN medicos m ON u.id = m.usuario_id
-        INNER JOIN especialidades e ON m.especialidad_id = e.id
-        WHERE u.rol = 'MEDICO'
-        ORDER BY m.apellido, m.nombre
-      `);
-    return res.json(result.recordset);
+    // Usa el método cacheado del modelo
+    const medicos = await medicosModel.getMedicos();
+    return res.json(medicos);
   } catch (err) {
     console.error('Error al obtener médicos:', err);
     return res.status(500).json({ error: 'Hubo un error al obtener los médicos' });
