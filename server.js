@@ -1,5 +1,4 @@
 // server.js
-
 require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
@@ -8,11 +7,10 @@ const morgan  = require('morgan');
 const authRoutes            = require('./routes/authRoutes');
 const pacientesRoutes       = require('./routes/pacientesRoutes');
 const medicosRoutes         = require('./routes/medicosRoutes');
-const administradoresRoutes = require('./routes/administradoresRoutes');
+const administradoresRoutes = require('./routes/administradoresRoutes');  // Asegúrate de que esta importación esté correctamente configurada
 const especialidadesRoutes  = require('./routes/especialidadesRoutes');
 const citasRoutes           = require('./routes/citasRoutes');
-
-const authMiddleware = require('./middlewares/authMiddleware');
+const authMiddleware        = require('./middlewares/authMiddleware');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -34,14 +32,14 @@ app.use('/api/pacientes/registro', pacientesRoutes);
 // ──────────────────────────────────────────────────────────────────────
 // 3) A PARTIR DE AQUÍ, TODAS LAS RUTAS REQUIEREN JWT (authMiddleware)
 // ──────────────────────────────────────────────────────────────────────
-app.use(authMiddleware);
+app.use(authMiddleware); // Rutas protegidas a partir de este punto
 
 // ──────────────────────────────────────────────────────────────────────
 // 4) RUTAS PROTEGIDAS (ya activado authMiddleware)
 // ──────────────────────────────────────────────────────────────────────
 app.use('/api/pacientes',       pacientesRoutes);
 app.use('/api/medicos',         medicosRoutes);
-app.use('/api/administradores', administradoresRoutes);
+app.use('/api/administradores', administradoresRoutes);  // Ruta para administradores
 app.use('/api/especialidades',  especialidadesRoutes);
 app.use('/api/citas',           citasRoutes);
 

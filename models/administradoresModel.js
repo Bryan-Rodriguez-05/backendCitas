@@ -2,6 +2,7 @@
 const { sql, poolPromise } = require('../config/dbConfig');
 const usuariosModel = require('./usuariosModel');
 const redisClient = require('../config/redisClient');
+
 module.exports = {
   /**
    * Crea un administrador completo (sólo ADMIN invoca):
@@ -36,9 +37,9 @@ module.exports = {
       `);
 
     // Invalidate cache
-    await redisClient.del('administradores:all');
+    await redisClient.del('administradores:all'); // Invalidar caché de administradores
 
-    return usuarioId;
+    return usuarioId; // Devuelve el ID del nuevo administrador
   },
 
   /**
@@ -48,7 +49,7 @@ module.exports = {
     const cacheKey = 'administradores:all';
     const cached = await redisClient.get(cacheKey);
     if (cached) {
-      return JSON.parse(cached);
+      return JSON.parse(cached); // Si existe en caché, devolver directamente
     }
 
     const pool = await poolPromise;
@@ -66,7 +67,7 @@ module.exports = {
       `);
     const administradores = result.recordset;
 
-    await redisClient.setEx(cacheKey, 300, JSON.stringify(administradores));
+    await redisClient.setEx(cacheKey, 300, JSON.stringify(administradores)); // Guardar en caché por 5 minutos
     return administradores;
   }
 };
