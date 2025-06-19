@@ -1,6 +1,7 @@
 // controllers/authController.js
 const jwt = require('jsonwebtoken');
 const { sql, poolPromise } = require('../config/dbConfig');
+const bcrypt = require('bcrypt');
 
 exports.login = async (req, res) => {
   try {
@@ -27,7 +28,9 @@ exports.login = async (req, res) => {
 
     // 2) Comparar la contraseña en texto plano
     // Ahora contrasenia_hash en la base es la contraseña sin encriptar
-    if (contrasenia !== usuario.contrasenia_hash) {
+    
+    const match = await bcrypt.compare(contrasenia, usuario.contrasenia_hash);
+    if (!match) {
       return res.status(401).json({ success: false, error: 'Credenciales incorrectas.' });
     }
 
