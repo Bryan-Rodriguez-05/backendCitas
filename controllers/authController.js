@@ -26,7 +26,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, error: 'Credenciales incorrectas.' });
     }
 
-    // 2) Comparar la contraseña en texto plano
+    // 2) Comparar la contraseña en texto plano 
     // Ahora contrasenia_hash en la base es la contraseña sin encriptar
     
     const match = await bcrypt.compare(contrasenia, usuario.contrasenia_hash);

@@ -2,6 +2,7 @@
 const { sql, poolPromise } = require('../config/dbConfig');
 const usuariosModel = require('./usuariosModel');
 const redisClient = require('../config/redisClient');
+const bcrypt = require('bcrypt');
 
 module.exports = {
   /**
@@ -19,37 +20,50 @@ module.exports = {
       throw new Error('Ya existe un usuario con este correo.');
     }
 
-    // 2) Hashear contraseña y crear usuario en 'usuarios' con rol = 'ADMIN'
-    const bcrypt = require('bcrypt');
+    // 2) Hashear contraseña
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(contrasenia, salt);
-    const usuarioId = await usuariosModel.createUsuario(correo, hash, 'ADMIN');
 
-    // 3) Insertar perfil en 'administradores'
+    // 3) Obtener conexión y crear transacción
     const pool = await poolPromise;
-    await pool.request()
-      .input('usuario_id', sql.Int, usuarioId)
-      .input('nombre', sql.VarChar, nombre)
-      .input('apellido', sql.VarChar, apellido)
-      .query(`
-        INSERT INTO administradores (usuario_id, nombre, apellido)
-        VALUES (@usuario_id, @nombre, @apellido)
-      `);
+    const transaction = pool.transaction();
 
-    // Invalidate cache
-    await redisClient.del('administradores:all'); // Invalidar caché de administradores
+    try {
+      await transaction.begin();
 
-    return usuarioId; // Devuelve el ID del nuevo administrador
+      // 3.1) Crear usuario en 'usuarios'
+      const usuarioId = await usuariosModel.createUsuario(correo, hash, 'ADMIN');
+
+      // 3.2) Insertar perfil en 'administradores'
+      await transaction.request()
+        .input('usuario_id', sql.Int, usuarioId)
+        .input('nombre', sql.VarChar, nombre)
+        .input('apellido', sql.VarChar, apellido)
+        .query(`
+          INSERT INTO administradores (usuario_id, nombre, apellido)
+          VALUES (@usuario_id, @nombre, @apellido)
+        `);
+
+      await transaction.commit();
+
+      // Invalidate cache
+      await redisClient.del('administradores:all');
+
+      return usuarioId;
+    } catch (err) {
+      await transaction.rollback();
+      throw new Error('Error al crear el administrador: ' + err.message);
+    }
   },
 
   /**
-   * (Opcional) Devuelve todos los administradores (sólo ADMIN puede invocar).
+   * Devuelve todos los administradores (sólo ADMIN puede invocar).
    */
   getAdministradores: async () => {
     const cacheKey = 'administradores:all';
     const cached = await redisClient.get(cacheKey);
     if (cached) {
-      return JSON.parse(cached); // Si existe en caché, devolver directamente
+      return JSON.parse(cached);
     }
 
     const pool = await poolPromise;
@@ -67,7 +81,7 @@ module.exports = {
       `);
     const administradores = result.recordset;
 
-    await redisClient.setEx(cacheKey, 300, JSON.stringify(administradores)); // Guardar en caché por 5 minutos
+    await redisClient.setEx(cacheKey, 300, JSON.stringify(administradores));
     return administradores;
   }
 };

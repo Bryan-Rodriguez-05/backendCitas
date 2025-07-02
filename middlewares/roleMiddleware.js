@@ -13,7 +13,7 @@ module.exports = function roleMiddleware(rolesPermitidos = []) {
     }
 
     // 3. Verificar la validez del token
-    jwt.verify(token, secret, (err, decoded) => {
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
       if (err) {
         return res.status(401).json({ error: 'Token inválido o expirado' });
       }

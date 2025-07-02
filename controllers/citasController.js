@@ -1,7 +1,7 @@
 // controllers/citasController.js
 const citasModel = require('../models/citasModel');
 const medicosModel = require('../models/medicosModel');
-
+const { sql, poolPromise } = require('../config/dbConfig');
 exports.createCita = async (req, res) => {
   // Rol 'PACIENTE'
   const pacienteUsuarioId = req.user.id;           // extraído del JWT
@@ -33,35 +33,40 @@ exports.createCita = async (req, res) => {
     });
   } catch (err) {
     console.error('Error al agendar cita:', err);
-    return res.status(500).json({ error: 'Hubo un error al agendar la cita' });
+    return res.status(500).json({ error: err.message });
   }
 };
 
 exports.getCitas = async (req, res) => {
-  const { rol, id: usuarioId } = req.user;
-  const pacienteParam = parseInt(req.query.paciente_usuario_id || '0', 10);
-
   try {
-    let filas = [];
+    const { rol, id: usuarioId } = req.user;
+    const pool = await poolPromise;
+    let result;
 
+    console.log("UsuarioId:", usuarioId);
     if (rol === 'PACIENTE') {
-      filas = await citasModel.getCitasPorPaciente(usuarioId);
+      result = await pool.request()
+        .input('paciente_usuario_id', sql.Int, usuarioId)
+        .query(`
+          SELECT * FROM citas
+          WHERE paciente_usuario_id = @paciente_usuario_id
+        `);
     } else if (rol === 'MEDICO') {
-      filas = await medicosModel.getCitasPorMedico(usuarioId);
-    } else if (rol === 'ADMIN') {
-      if (pacienteParam) {
-        filas = await citasModel.getCitasPorPaciente(pacienteParam);
-      } else {
-        filas = await citasModel.getAllCitas();
-      }
-    } else {
-      return res.status(403).json({ error: 'Rol no permitido para esta operación.' });
+      result = await pool.request()
+        .input('medico_usuario_id', sql.Int, usuarioId)
+        .query(`
+          SELECT * FROM citas
+          WHERE medico_usuario_id = @medico_usuario_id
+        `);
+    } else { // ADMIN
+      result = await pool.request()
+        .query(`SELECT * FROM citas`);
     }
 
-    return res.json(filas);
+    return res.json(result.recordset);
   } catch (err) {
-    console.error('Error al obtener las citas:', err);
-    return res.status(500).json({ error: 'Hubo un error al obtener las citas' });
+    console.error('Error al obtener citas:', err);
+    return res.status(500).json({ error: 'Error al obtener citas' });
   }
 };
 
