@@ -1,19 +1,21 @@
 // config/redisClient.js
-const { createClient } = require('redis');
+// Comenta todo el bloque de código que crea la conexión con Redis si no deseas usarlo completamente
 
-const redisClient = createClient({
-  socket: {
-    host: process.env.REDIS_HOST || '127.0.0.1',  // IPv4 explícito
-    port: Number(process.env.REDIS_PORT || 6379),
-    family: 4                                     // Fuerza IPv4
-  }
-});
+// const { createClient } = require('redis');
 
-redisClient.on('error', err => console.error('Redis Client Error', err));
+// const redisClient = createClient({
+//   socket: {
+//     host: process.env.REDIS_HOST || '127.0.0.1',
+//     port: Number(process.env.REDIS_PORT || 6379),
+//     family: 4
+//   }
+// });
 
-(async () => {
-  await redisClient.connect();
-  console.log('✅ Conectado a Redis en 127.0.0.1:6379 (IPv4)');
-})();
+// redisClient.on('error', err => console.error('Redis Client Error', err));
 
-module.exports = redisClient;
+// (async () => {
+//   await redisClient.connect();
+//   console.log('✅ Conectado a Redis en 127.0.0.1:6379 (IPv4)');
+// })();
+
+// module.exports = redisClient;  // Comenta esta línea si deseas desactivar Redis

@@ -1,22 +1,11 @@
 // models/medicosModel.js
 const { sql, poolPromise } = require('../config/dbConfig');
 const usuariosModel = require('./usuariosModel');
-const redisClient = require('../config/redisClient');
+// const redisClient = require('../config/redisClient');  // Comenta o elimina la importación de Redis
+
 module.exports = {
-  /**
-   * Crea un médico completo (sólo ADMIN puede invocar).
-   * Recibe { correo, contrasenia, nombre, apellido, telefono, especialidad_id }.
-   * Devuelve usuario_id.
-   */
   createMedicoCompleto: async (datos) => {
-    const {
-      correo,
-      contrasenia,
-      nombre,
-      apellido,
-      telefono,
-      especialidad_id
-    } = datos;
+    const { correo, contrasenia, nombre, apellido, telefono, especialidad_id } = datos;
 
     // 1) Verificar duplicidad de correo
     const existe = await usuariosModel.getUsuarioPorCorreo(correo);
@@ -27,8 +16,9 @@ module.exports = {
     // 2) Hashear contraseña y crear en 'usuarios' con rol 'MEDICO'
     const bcrypt = require('bcrypt');
     const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(contrasenia, salt);
-    const usuarioId = await usuariosModel.createUsuario(correo, hash, 'MEDICO');
+    const hash = await bcrypt.hash(contrasenia, salt);  // Hasheamos la contraseña
+
+    const usuarioId = await usuariosModel.createUsuario(correo, hash, 'MEDICO');  // Usamos el hash
 
     // 3) Insertar perfil en 'medicos'
     const pool = await poolPromise;
@@ -45,22 +35,16 @@ module.exports = {
           (@usuario_id, @nombre, @apellido, @telefono, @especialidad_id)
       `);
 
-    // Invalidate cache
-    await redisClient.del('medicos:all');
-
     return usuarioId;
   },
 
-  /**
-   * Devuelve un arreglo con todos los médicos (para ADMIN),
-   * incluyendo su correo y el nombre de la especialidad.
-   */
   getMedicos: async () => {
-    const cacheKey = 'medicos:all';
-    const cached = await redisClient.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
+    // Eliminar todo el código relacionado con Redis para evitar el uso de caché.
+    // const cacheKey = 'medicos:all';
+    // const cached = await redisClient.get(cacheKey);
+    // if (cached) {
+    //   return JSON.parse(cached);
+    // }
 
     const pool = await poolPromise;
     const result = await pool.request()
@@ -80,22 +64,20 @@ module.exports = {
         ORDER BY m.apellido, m.nombre
       `);
     const medicos = result.recordset;
-        
-    await redisClient.setEx(cacheKey, 300, JSON.stringify(medicos));
-    console.log('Guardando en cache:', cacheKey, '- cantidad:', medicos.length);
+
+    // Si no usas Redis, simplemente no lo guardes en caché.
+    // await redisClient.setEx(cacheKey, 300, JSON.stringify(medicos));  // Eliminar esta línea también.
 
     return medicos;
   },
 
-  /**
-   * Devuelve un objeto médico por usuario_id (o undefined si no existe).
-   */
   getMedicoPorUsuarioId: async (usuario_id) => {
-    const cacheKey = `medico:${usuario_id}`;
-    const cached = await redisClient.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
+    // Eliminar todo el código relacionado con Redis para evitar el uso de caché.
+    // const cacheKey = `medico:${usuario_id}`;
+    // const cached = await redisClient.get(cacheKey);
+    // if (cached) {
+    //   return JSON.parse(cached);
+    // }
 
     const pool = await poolPromise;
     const result = await pool.request()
@@ -116,16 +98,14 @@ module.exports = {
       `);
     const medico = result.recordset[0] || null;
 
-    if (medico) {
-      await redisClient.setEx(cacheKey, 300, JSON.stringify(medico));
-    }
+    // Si no usas Redis, simplemente no lo guardes en caché.
+    // if (medico) {
+    //   await redisClient.setEx(cacheKey, 300, JSON.stringify(medico));
+    // }
+    
     return medico;
   },
 
-  /**
-   * Actualiza perfil de un médico (nombre, apellido, teléfono, especialidad).
-   * Para cambiar correo/contraseña, usar usuariosModel.
-   */
   updateMedicoPerfil: async (usuario_id, datos) => {
     const { nombre, apellido, telefono, especialidad_id } = datos;
     const pool = await poolPromise;
@@ -144,15 +124,12 @@ module.exports = {
           especialidad_id = @especialidad_id
         WHERE usuario_id = @usuario_id
       `);
-      // Invalidate cache
-    await redisClient.del('medicos:all');
-    await redisClient.del(`medico:${usuario_id}`);
+
+      // Si no usas Redis, simplemente no lo invalides.
+      // await redisClient.del('medicos:all');
+      // await redisClient.del(`medico:${usuario_id}`);
   },
 
-  /**
-   * Elimina un médico por usuario_id.
-   * Al borrar de 'usuarios' (cascade), se borra perfil y citas asociadas.
-   */
   deleteMedico: async (usuario_id) => {
     const pool = await poolPromise;
     await pool.request()
@@ -161,14 +138,12 @@ module.exports = {
         DELETE FROM usuarios
         WHERE id = @usuario_id
       `);
-      // Invalidate cache
-    await redisClient.del('medicos:all');
-    await redisClient.del(`medico:${usuario_id}`);
+
+      // Si no usas Redis, simplemente no lo invalides.
+      // await redisClient.del('medicos:all');
+      // await redisClient.del(`medico:${usuario_id}`);
   },
 
-  /**
-   * Devuelve todas las citas para un médico dado (rol 'MEDICO').
-   */
   getCitasPorMedico: async (medico_usuario_id) => {
     const pool = await poolPromise;
     const result = await pool.request()

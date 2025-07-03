@@ -1,12 +1,14 @@
 // controllers/medicosController.js
 const { sql, poolPromise } = require('../config/dbConfig');
 const medicosModel = require('../models/medicosModel');
+const bcrypt = require('bcrypt');
+
 // POST /api/medicos/registro   (solo ADMIN)
 exports.createMedico = async (req, res) => {
   try {
     const {
       correo,
-      contrasenia,      // contraseña en texto plano
+      contrasenia,      // Contraseña en texto plano
       nombre,
       apellido,
       telefono,
@@ -27,10 +29,14 @@ exports.createMedico = async (req, res) => {
       return res.status(400).json({ error: 'Ya existe un usuario con este correo.' });
     }
 
-    // 2) Insertar en tabla 'usuarios' (contrasenia_hash = contraseña en texto plano, rol = 'MEDICO')
+    // 2) Hashear la contraseña antes de guardarla
+    const salt = await bcrypt.genSalt(10);
+    const contraseniaHash = await bcrypt.hash(contrasenia, salt);
+
+    // 3) Insertar en tabla 'usuarios' (contrasenia_hash = contraseña hasheada, rol = 'MEDICO')
     const insertUser = await pool.request()
       .input('correo', sql.VarChar, correo)
-      .input('contrasenia_hash', sql.VarChar, contrasenia)
+      .input('contrasenia_hash', sql.VarChar, contraseniaHash)  // Usamos el hash aquí
       .input('rol', sql.VarChar, 'MEDICO')
       .query(`
         INSERT INTO usuarios (correo, contrasenia_hash, rol)
@@ -39,7 +45,7 @@ exports.createMedico = async (req, res) => {
       `);
     const usuarioId = insertUser.recordset[0].id;
 
-    // 3) Insertar perfil en tabla 'medicos'
+    // 4) Insertar perfil en tabla 'medicos'
     await pool.request()
       .input('usuario_id', sql.Int, usuarioId)
       .input('nombre', sql.VarChar, nombre)
@@ -64,16 +70,25 @@ exports.createMedico = async (req, res) => {
 };
 
 // GET /api/medicos   (roles: PACIENTE, MEDICO, ADMIN)
-exports.getMedicos = async (req, res, next) => {
+
+exports.getMedicos = async (req, res) => {
   try {
-    // Usa el método cacheado del modelo
+    // Eliminar el caché de Redis
+    // const cacheKey = 'medicos:all';
+    // const cached = await redisClient.get(cacheKey);  // Comentar esto para evitar la lectura del caché
+
+    // Si decides no usar caché, directamente consulta la base de datos
     const medicos = await medicosModel.getMedicos();
+    // En este caso, omite la línea de guardar en el caché.
+    // await redisClient.setEx(cacheKey, 300, JSON.stringify(medicos));
+
     return res.json(medicos);
   } catch (err) {
     console.error('Error al obtener médicos:', err);
     return res.status(500).json({ error: 'Hubo un error al obtener los médicos' });
   }
 };
+
 
 // GET /api/medicos/:id   (roles: MEDICO, ADMIN)
 exports.getMedico = async (req, res) => {

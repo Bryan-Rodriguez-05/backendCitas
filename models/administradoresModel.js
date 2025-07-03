@@ -1,7 +1,7 @@
 // models/administradoresModel.js
 const { sql, poolPromise } = require('../config/dbConfig');
 const usuariosModel = require('./usuariosModel');
-const redisClient = require('../config/redisClient');
+// const redisClient = require('../config/redisClient');  // Comentar esta línea para desactivar Redis
 const bcrypt = require('bcrypt');
 
 module.exports = {
@@ -46,8 +46,8 @@ module.exports = {
 
       await transaction.commit();
 
-      // Invalidate cache
-      await redisClient.del('administradores:all');
+      // Si no usas Redis, no es necesario invalidar el caché.
+      // await redisClient.del('administradores:all');
 
       return usuarioId;
     } catch (err) {
@@ -60,11 +60,12 @@ module.exports = {
    * Devuelve todos los administradores (sólo ADMIN puede invocar).
    */
   getAdministradores: async () => {
-    const cacheKey = 'administradores:all';
-    const cached = await redisClient.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
+    // Eliminar todo el código relacionado con Redis para evitar el uso de caché.
+    // const cacheKey = 'administradores:all';
+    // const cached = await redisClient.get(cacheKey);
+    // if (cached) {
+    //   return JSON.parse(cached);
+    // }
 
     const pool = await poolPromise;
     const result = await pool.request()
@@ -81,7 +82,9 @@ module.exports = {
       `);
     const administradores = result.recordset;
 
-    await redisClient.setEx(cacheKey, 300, JSON.stringify(administradores));
+    // Si no usas Redis, no es necesario guardarlo en caché.
+    // await redisClient.setEx(cacheKey, 300, JSON.stringify(administradores));
+
     return administradores;
   }
 };

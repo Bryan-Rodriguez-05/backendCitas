@@ -1,7 +1,7 @@
 // models/pacientesModel.js
 const { sql, poolPromise } = require('../config/dbConfig');
-const usuariosModel = require('./usuariosModel');
-const redisClient = require('../config/redisClient');
+// const redisClient = require('../config/redisClient');  // Comentar esta línea para desactivar Redis
+
 module.exports = {
   /**
    * Crea un paciente completo:
@@ -12,16 +12,7 @@ module.exports = {
    * Devuelve usuario_id (entero).
    */
   createPacienteCompleto: async (datos) => {
-    const {
-      correo,
-      contrasenia,
-      nombre,
-      apellido,
-      fecha_nacimiento,
-      direccion,
-      telefono,
-      dni
-    } = datos;
+    const { correo, contrasenia, nombre, apellido, fecha_nacimiento, direccion, telefono, dni } = datos;
 
     // 1) Verificar duplicidad de correo
     const usuarioExistente = await usuariosModel.getUsuarioPorCorreo(correo);
@@ -53,8 +44,9 @@ module.exports = {
         VALUES
           (@usuario_id, @nombre, @apellido, @fecha_nacimiento, @direccion, @telefono, @dni)
       `);
-    // Invalidate cache
-    await redisClient.del('pacientes:all');
+
+    // Si no usas Redis, no es necesario invalidar el caché.
+    // await redisClient.del('pacientes:all');  // Eliminar esta línea si no usas Redis.
 
     return usuarioId;
   },
@@ -64,11 +56,12 @@ module.exports = {
    * Cada fila incluye usuario_id, correo, nombre, apellido, ...
    */
   getPacientes: async () => {
-     const cacheKey = 'pacientes:all';
-    const cached = await redisClient.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
+    // Eliminar todo el código relacionado con Redis para evitar el uso de caché.
+    // const cacheKey = 'pacientes:all';
+    // const cached = await redisClient.get(cacheKey);
+    // if (cached) {
+    //   return JSON.parse(cached);
+    // }
 
     const pool = await poolPromise;
     const result = await pool.request()
@@ -89,7 +82,9 @@ module.exports = {
       `);
     const pacientes = result.recordset;
 
-    await redisClient.setEx(cacheKey, 300, JSON.stringify(pacientes));
+    // Si no usas Redis, simplemente no lo guardes en caché.
+    // await redisClient.setEx(cacheKey, 300, JSON.stringify(pacientes));  // Eliminar esta línea también.
+
     return pacientes;
   },
 
@@ -97,11 +92,12 @@ module.exports = {
    * Devuelve objeto paciente por usuario_id, o undefined si no existe.
    */
   getPacientePorUsuarioId: async (usuario_id) => {
-    const cacheKey = `paciente:${usuario_id}`;
-    const cached = await redisClient.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
+    // Eliminar todo el código relacionado con Redis para evitar el uso de caché.
+    // const cacheKey = `paciente:${usuario_id}`;
+    // const cached = await redisClient.get(cacheKey);
+    // if (cached) {
+    //   return JSON.parse(cached);
+    // }
 
     const pool = await poolPromise;
     const result = await pool.request()
@@ -122,9 +118,11 @@ module.exports = {
       `);
     const paciente = result.recordset[0] || null;
 
-    if (paciente) {
-      await redisClient.setEx(cacheKey, 300, JSON.stringify(paciente));
-    }
+    // Si no usas Redis, no es necesario guardarlo en caché.
+    // if (paciente) {
+    //   await redisClient.setEx(cacheKey, 300, JSON.stringify(paciente));
+    // }
+    
     return paciente;
   },
 
@@ -133,14 +131,7 @@ module.exports = {
    * datos = { nombre, apellido, fecha_nacimiento, direccion, telefono, dni }
    */
   updatePacientePerfil: async (usuario_id, datos) => {
-    const {
-      nombre,
-      apellido,
-      fecha_nacimiento,
-      direccion,
-      telefono,
-      dni
-    } = datos;
+    const { nombre, apellido, fecha_nacimiento, direccion, telefono, dni } = datos;
     const pool = await poolPromise;
     await pool.request()
       .input('usuario_id', sql.Int, usuario_id)
@@ -161,9 +152,10 @@ module.exports = {
           dni             = @dni
         WHERE usuario_id = @usuario_id
       `);
-      // Invalidate cache
-    await redisClient.del('pacientes:all');
-    await redisClient.del(`paciente:${usuario_id}`);
+
+      // Si no usas Redis, no es necesario invalidar el caché.
+      // await redisClient.del('pacientes:all');
+      // await redisClient.del(`paciente:${usuario_id}`);
   },
 
   /**
@@ -179,8 +171,9 @@ module.exports = {
         DELETE FROM usuarios
         WHERE id = @usuario_id
       `);
-      // Invalidate cache
-    await redisClient.del('pacientes:all');
-    await redisClient.del(`paciente:${usuario_id}`);
+
+      // Si no usas Redis, no es necesario invalidar el caché.
+      // await redisClient.del('pacientes:all');
+      // await redisClient.del(`paciente:${usuario_id}`);
   }
 };
